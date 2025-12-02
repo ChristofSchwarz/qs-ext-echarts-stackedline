@@ -1,14 +1,11 @@
 # Apache echarts implementation for Qlik Sense
 
-This extension creates a chart like this with a
-
-- target-value (which is also the 'continuous' x-axis)
-- a (measured) value
-- a lower and upper limit, which will be shown as a confidence-area
-- a trend line
-
-If the measured value is outside of lower and upper limit it is painted in a separate color.
-
-![image](https://user-images.githubusercontent.com/15999058/197381480-8bbe14db-3858-46cf-8eef-9518f3c03406.png)
+This extension creates a stacked line chart like this from two dimensions and a measure
+ - Dim 1) The x-axis dimension (typically a time dimension like a month)
+ - Dim 2) The y-axis dimension: the data series by
+ - Measure 1) The value 
 
 All labels and colors can be defined in the extension.
+
+<img width="1411" height="410" alt="Screenshot 2025-12-02 184122" src="https://github.com/user-attachments/assets/4566d7d0-8a02-4491-8eda-3874394e5f21" />
+
