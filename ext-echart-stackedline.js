@@ -1,9 +1,10 @@
-define(["qlik", 
-    "jquery", 
-    "./props", 
-    "./cdnjs/echarts.min"
+define(["qlik",
+    "jquery",
+    "./props",
+    "./cdnjs/echarts.min",
+    "./moreFunctions"
     // echarts.min.js from https://www.cdnpkg.com/echarts/file/echarts.min.js/?id=32956
-], function (qlik, $, props, echarts) {
+], function (qlik, $, props, echarts, moreFunctions) {
 
     'use strict';
 
@@ -24,8 +25,8 @@ define(["qlik",
             disableNavMenu: false,
             qHyperCubeDef: {
                 qInitialDataFetch: [{
-                    qWidth: 3,
-                    qHeight: Math.floor(10000 / 3) // divide 10000 by qWidt
+                    qWidth: 4,
+                    qHeight: Math.floor(10000 / 4) // divide 10000 by qWidth
                 }],
                 // qMeasures: JSON.parse(initialProps).qHyperCubeDef.qMeasures
             }
@@ -43,7 +44,7 @@ define(["qlik",
                 measures: {
                     uses: "measures",
                     min: 1,
-                    max: 1
+                    max: 2
                 },
                 sorting: {
                     uses: "sorting"
@@ -83,263 +84,368 @@ define(["qlik",
             const thisSheetId = qlik.navigation.getCurrentSheetId().sheetId;
             const enigma = app.model.enigmaModel;
             const props = await app.getObjectProperties(ownId);
+            if (layout.pConsoleLog) console.log(ownId, 'properties', props.properties);
 
+            if (props.properties.qHyperCubeDef.qSuppressZero) {
+                $element.html('<div style="padding:10px;color:#900;">The option "Include Zero Values" is disabled. Please enable it to render the chart.</div>');
+                return qlik.Promise.resolve();
+            };
             $element.html(
                 '<div id="parent_' + ownId + '" style="height:100%;width:100%;position:relative;">'
                 + '<span id="toggleBtn_' + ownId + '" style="position:absolute;top:-8px;right:40px;cursor:pointer;background:#f0f0f0;border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;z-index:1000;" title="Toggle view">i</span>'
                 + '<div id="chart_' + ownId + '" style="height:100%;width:100%;"></div>'
+                + '<div id="chart2_' + ownId + '" style="height:100%;width:100%;display:none;"></div>'
                 + '<div id="table_' + ownId + '" style="height:100%;width:100%;overflow:auto;display:none;"></div>'
                 + '</div>');
 
-            const dim2 = props.properties?.qHyperCubeDef.qDimensions[1]?.qDef.qFieldDefs[0];
+            const dim2 = //props.properties?.qHyperCubeDef.qDimensions[1]?.qDef.qFieldDefs[0] ||
+                layout.qHyperCube.qDimensionInfo[1].qEffectiveDimensionName;
             const measureFormula = props.properties?.qHyperCubeDef.qMeasures[0]?.qDef.qDef;
+            // const numFormat = props.properties?.qHyperCubeDef.qMeasures[0]?.qDef.qNumFormat;
+            // if (layout.pConsoleLog) console.log('numFormat',numFormat);
+
+            // build engine expression to get total values per stack dimension
             const totalValsDef = `Aggr('"' & [${dim2}] & '":' & Num(${measureFormula},'','.',' '), [${dim2}])`;
-            if (layout.pConsoleLog) console.log('totalValsDef', totalValsDef);
+            if (layout.pConsoleLog) console.log('Engine to calculate totalValsDef', totalValsDef);
             var totalVals = await enigma.evaluate(`=Concat(${totalValsDef}, ',')`);
 
             var colors = {};
-            if (totalVals) {
+            try {
                 totalVals = JSON.parse('{' + totalVals + '}');
-                // Sort totalVals by values (descending)
-                totalVals = Object.fromEntries(
-                    Object.entries(totalVals).sort((a, b) => b[1] - a[1])
-                );
+            }
+            catch (e) {
+                console.error('Error parsing totalVals', e, totalVals);
+                $element.html('<div style="padding:10px;color:#900;">No total data available to display the chart.</div>');
+                return qlik.Promise.resolve();
+            }
+            // Sort totalVals by values (descending)
+            totalVals = Object.fromEntries(
+                Object.entries(totalVals).sort((a, b) => b[1] - a[1])
+            );
+            if (layout.pConsoleLog) console.log('totalVals ', totalVals);
 
-                // Count positives and negatives
-                const positives = [];
-                const negatives = [];
-                Object.entries(totalVals).forEach(([key, value]) => {
-                    if (value >= 0) {
-                        positives.push(key);
-                    } else {
-                        negatives.push(key);
-                    }
-                });
-
-                // Helper function to interpolate between two colors
-                function interpolateColor(color1, color2, factor) {
-                    const c1 = parseInt(color1.slice(1), 16);
-                    const c2 = parseInt(color2.slice(1), 16);
-
-                    const r1 = (c1 >> 16) & 0xff;
-                    const g1 = (c1 >> 8) & 0xff;
-                    const b1 = c1 & 0xff;
-
-                    const r2 = (c2 >> 16) & 0xff;
-                    const g2 = (c2 >> 8) & 0xff;
-                    const b2 = c2 & 0xff;
-
-                    const r = Math.round(r1 + factor * (r2 - r1));
-                    const g = Math.round(g1 + factor * (g2 - g1));
-                    const b = Math.round(b1 + factor * (b2 - b1));
-
-                    return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+            // Count positives and negatives
+            const positives = [];
+            const negatives = [];
+            Object.entries(totalVals).forEach(([key, value]) => {
+                if (value >= 0) {
+                    positives.push(key);
+                } else {
+                    negatives.unshift(key);
                 }
+            });
+            const positivesPlus = positives.map(item => item + '+');
+            const positivesMinus = positives.map(item => item + '-');
+            const negativesPlus = negatives.map(item => item + '+');
+            const negativesMinus = negatives.map(item => item + '-');
+            // console.log('positives', positivesPlus);
+            // console.log('negatives', negativesMinus);
 
-                // Assign colors for positives
-                positives.forEach((key, index) => {
-                    const factor = positives.length > 1 ? index / (positives.length - 1) : 0;
-                    colors[key] = interpolateColor(layout.pPosStartColor, layout.pPosEndColor, factor);
-                });
+            const legendSortOrder = [...positives].reverse().concat(negatives);
+            if (layout.pConsoleLog) console.log('legendSortOrder', legendSortOrder);
+            const stacksSortOrder = positivesPlus.concat(negativesPlus).concat(negativesMinus).concat(positivesMinus);
+            if (layout.pConsoleLog) console.log('stacksSortOrder', stacksSortOrder);
 
-                // Assign colors for negatives
-                negatives.forEach((key, index) => {
-                    const factor = negatives.length > 1 ? index / (negatives.length - 1) : 0;
-                    colors[key] = interpolateColor(layout.pNegStartColor, layout.pNegEndColor, factor);
-                });
+            // Assign colors for positives
+            positives.forEach((key, index) => {
+                const factor = positives.length > 1 ? index / (positives.length - 1) : 0;
+                colors[key] = moreFunctions.interpolateColor(layout.pPosStartColor, layout.pPosEndColor, factor);
+            });
 
-                if (layout.pConsoleLog) console.log('totalVals ', totalVals);
-                if (layout.pConsoleLog) console.log('colors ', colors);
+            // Assign colors for negatives
+            negatives.forEach((key, index) => {
+                const factor = negatives.length > 1 ? index / (negatives.length - 1) : 0;
+                colors[key] = moreFunctions.interpolateColor(layout.pNegStartColor, layout.pNegEndColor, factor);
+            });
 
-                var chartDom = document.getElementById('chart_' + ownId);
-                echart = echarts.init(chartDom);
 
-                var ecOpt = {
-                    animation: false,
-                    xAxis: [{
-                        type: 'category',
-                        name: layout.pXAxisLabel ? layout.qHyperCube.qDimensionInfo[0].qFallbackTitle : '',
-                        nameLocation: 'middle',
-                        nameGap: 30,
-                        nameTextStyle: { fontSize: 14 },
-                        data: [],
-                        boundaryGap: layout.pBoundaryGap
-                    }],
-                    yAxis: [{
-                        type: 'value',
-                        name: layout.pYAxisLabel ? layout.qHyperCube.qMeasureInfo[0].qFallbackTitle : '',
-                        nameLocation: 'middle',
-                        nameGap: 40,
-                        nameTextStyle: { fontSize: 14 }
-                    }],
-                    tooltip: {
-                        trigger: 'axis', // or 'axis'
-                        formatter: function (params) {
-                            // params contains info about the data point
-                            // You can return any HTML string here
-                            // console.log(params);
-                            var vals = {};
-                            var colors = {};
+            if (layout.pConsoleLog) console.log('colors ', colors);
 
-                            params.forEach(param => {
-                                colors[param.seriesName] = param.color;
-                                vals[param.seriesName] = vals[param.seriesName] ? (vals[param.seriesName] + param.data) : param.data;
-                            })
-                            var ttip = ''
-                            for (const [key, value] of Object.entries(vals)) {
-                                ttip += `<span style='color:${colors[key]};'>\u25CF</span>${key} : ${Math.round(value * 100) / 100}<br>`;
+            var chartDom = document.getElementById('chart_' + ownId);
+            echart = echarts.init(chartDom);
+
+            var ecOpt = {
+                animation: false,
+                xAxis: [{
+                    type: 'category',
+                    name: layout.pXAxisLabel ? layout.qHyperCube.qDimensionInfo[0].qFallbackTitle : '',
+                    nameLocation: 'middle',
+                    nameGap: 30,
+                    nameTextStyle: { fontSize: 14 },
+                    axisLabel: {
+                        rotate: parseInt(layout.pXAxisRotation)
+                    },
+                    data: [],
+                    boundaryGap: layout.pBoundaryGap
+                }],
+                yAxis: [{
+                    type: 'value',
+                    name: layout.pYAxisLabel ? layout.qHyperCube.qMeasureInfo[0].qFallbackTitle : '',
+                    nameLocation: 'middle',
+                    nameGap: 40,
+                    nameTextStyle: { fontSize: 14 },
+                    axisLabel: {
+                        formatter: function (value) {
+                            return moreFunctions.formatNumber(value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep);
+                        }
+                    }
+                }],
+                tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#333',
+                    borderColor: '#333',
+                    textStyle: {
+                        color: '#fff',
+                        fontSize: 11
+                    },
+                    formatter: function (params) {
+                        // params contains info about the data point
+                        // You can return any HTML string here
+                        // console.log(params);
+                        var vals = {};
+                        var colors = {};
+
+                        params.forEach(param => {
+                            colors[param.seriesName] = param.color;
+                            vals[param.seriesName] = vals[param.seriesName] ? (vals[param.seriesName] + param.data) : param.data;
+                        })
+                        var ttip = ''
+                        legendSortOrder.forEach(key => {
+                            if (vals[key] !== undefined) {
+                                const formattedValue = moreFunctions.formatNumber(vals[key], layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep);
+                                // ttip += `<span style='color:${colors[key]};'>\u25CF</span>${key} : ${formattedValue}<br>`;
+                                ttip += ` <div style="display:flex; justify-content:space-between; margin:2px 0;">
+                                    <span style="text-align:left;"><span style='color:${colors[key]};'>\u25A0</span> ${key}&nbsp</span>
+                                    <span style="text-align:right;">&nbsp;${formattedValue}</span>
+                                </div>`;
                             }
-                            return `<div>
+                        });
+                        return `<div>
                         <strong>${params[0].axisValueLabel}</strong><br>
                         ${ttip}
                         </div>`;
+                    }
+                },
+                legend: {
+                    show: layout.pShowLegend != 'off',
+                    data: [], //legendSortOrder,
+                    //formatter: (d) => d.replace('Upper', 'Range'),
+                    icon: 'square',
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center'
+                },
+                grid: {
+                    left: layout.pGridLeft,
+                    right: layout.pGridRight,
+                    top: layout.pGridTop,
+                    bottom: layout.pGridBottom,
+                    containLabel: false
+                },
+                series: [],
+                toolbox: {
+                    feature: {
+                        saveAsImage: {}
+                    }
+                }
+            };
+
+            var ecOpt2 = {
+                title: {
+                    text: 'Total Values by ' + layout.qHyperCube.qDimensionInfo[1].qFallbackTitle
+                },
+                xAxis: {
+                    type: 'category',
+                    data: legendSortOrder
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: {
+                        formatter: function (value) {
+                            return moreFunctions.formatNumber(value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep);
                         }
-                    },
-                    legend: {
-                        show: layout.pShowLegend != 'off',
+                    }
+                },
+                series: [
+                    {
                         data: [],
-                        //formatter: (d) => d.replace('Upper', 'Range'),
-                        icon: 'square',
-                        orient: 'vertical',
-                        right: 10,
-                        top: 'center'
-                    },
-                    grid: {
-                        left: layout.pGridLeft,
-                        right: layout.pGridRight,
-                        top: layout.pGridTop,
-                        bottom: layout.pGridBottom,
-                        containLabel: false
-                    },
-                    series: [],
-                    toolbox: {
-                        feature: {
-                            saveAsImage: {}
-                        }
-                    }
-                };
-
-                // Build data structure for table view
-                var tableData = {};
-                var xAxisLabels = [];
-                var yAxisLabels = [];
-
-                // parsing the hypercube data into echart options
-                var found = 0;
-
-                for (const row of layout.qHyperCube.qDataPages[0].qMatrix) {
-                    // console.log('row', row);
-                    const xAxisLabel = row[0].qText;
-                    const yAxisLabel = row[1].qText;
-                    const value = row[2].qNum;
-
-                    // Build table data structure
-                    if (!tableData[yAxisLabel]) {
-                        tableData[yAxisLabel] = {};
-                        yAxisLabels.push(yAxisLabel);
-                    }
-                    tableData[yAxisLabel][xAxisLabel] = value;
-                    if (!xAxisLabels.includes(xAxisLabel)) {
-                        xAxisLabels.push(xAxisLabel);
-                    }
-
-                    // console.log(xAxisLabel, yAxisLabel, value);
-
-                    if (!ecOpt.xAxis[0].data.includes(xAxisLabel)) {
-                        ecOpt.xAxis[0].data.push(xAxisLabel);
-                    }
-
-                    if (!ecOpt.legend.data?.includes(yAxisLabel)) {
-                        ecOpt.legend.data?.push(yAxisLabel);
-                        const newSeries = JSON.stringify({
-                            name: yAxisLabel,
-                            type: 'line',
-                            stack: 'Total',
-                            smooth: layout.pSmoothLine, 
-                            showSymbol: false,
-                            itemStyle: { color: colors[yAxisLabel] },
-                            lineStyle: { width: layout.pLineWidth },
-                            areaStyle: { opacity: layout.pStackOpacity },
-                            emphasis: { focus: 'series' },
-                            data: []
-                        });
-                        ecOpt.series.push(JSON.parse(newSeries));
-                        ecOpt.series.push(JSON.parse(newSeries)); // we add it twice.
-                    }
-                    // Find all matching series indices
-                    found = 0;
-                    ecOpt.series.forEach((s, i) => {
-                        if (s.name === yAxisLabel) {
-                            found++;
-                            if (found == 1) { // add the postive value or 0 to the first series
-                                ecOpt.series[i].data.push(Math.max(value, 1e-7));
-                            }
-                            if (found == 2) { // add the negative value or -1e-7 to the second series
-                                ecOpt.series[i].data.push(Math.min(value, -1e-7));
+                        type: 'bar',
+                        label: {
+                            show: true,
+                            position: 'top',
+                            formatter: function (params) {
+                                return moreFunctions.formatNumber(params.value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep);
                             }
                         }
-                    });
-                }
+                    }
+                ]
+            };
 
-                // Sort legend.data and series based on position in totalVals
-                if (totalVals) {
-                    const totalValsKeys = Object.keys(totalVals);
 
-                    ecOpt.legend.data?.sort((a, b) => {
-                        const posA = totalValsKeys.indexOf(a);
-                        const posB = totalValsKeys.indexOf(b);
-                        return (posA === -1 ? Infinity : posA) - (posB === -1 ? Infinity : posB);
-                    });
+            // Build data structure for table view
+            var tableData = {};
+            var xAxisLabels = [];
+            var yAxisLabels = [];
 
-                    ecOpt.series.sort((a, b) => {
-                        const posA = totalValsKeys.indexOf(a.name);
-                        const posB = totalValsKeys.indexOf(b.name);
-                        return (posA === -1 ? Infinity : posA) - (posB === -1 ? Infinity : posB);
-                    });
-                }
+            // parsing the hypercube data into echart options
+            var found = 0;
 
-                if (layout.pConsoleLog) console.log('ecOpt', ecOpt);
-                echart.setOption(ecOpt);
+            for (const row of layout.qHyperCube.qDataPages[0].qMatrix) {
+                // console.log('row', row);
+                const xAxisLabel = row[0].qText;
+                const yAxisLabel = row[1].qText;
+                const value = row[2].qNum;
                 
-                // Build HTML table
-                let tableHtml = '<table style="border-collapse:collapse;width:100%;font-size:12px;">';
-                tableHtml += '<thead><tr><th style="border:1px solid #ccc;padding:5px;background:#f0f0f0;position:sticky;top:0;"></th>';
-                xAxisLabels.forEach(xLabel => {
-                    tableHtml += '<th style="border:1px solid #ccc;padding:5px;background:#f0f0f0;position:sticky;top:0;">' + xLabel + '</th>';
+                // Check for optional 4th element (color code)
+                if (row[3] && row[3].qText && row[3].qText.length > 1) {
+                    colors[yAxisLabel] = row[3].qText;
+                }
+
+                // Build table data structure
+                if (!tableData[yAxisLabel]) {
+                    tableData[yAxisLabel] = {};
+                    yAxisLabels.push(yAxisLabel);
+                }
+                tableData[yAxisLabel][xAxisLabel] = value;
+                if (!xAxisLabels.includes(xAxisLabel)) {
+                    xAxisLabels.push(xAxisLabel);
+                }
+
+                // console.log(xAxisLabel, yAxisLabel, value);
+
+                if (!ecOpt.xAxis[0].data.includes(xAxisLabel)) {
+                    ecOpt.xAxis[0].data.push(xAxisLabel);
+                }
+
+                if (!ecOpt.legend.data?.includes(yAxisLabel)) {
+                    ecOpt.legend.data?.push(yAxisLabel);
+                    const newSeries = JSON.stringify({
+                        name: yAxisLabel,
+                        type: 'line',
+                        stack: 'Total',
+                        smooth: layout.pSmoothLine,
+                        showSymbol: false,
+                        itemStyle: { color: colors[yAxisLabel] },
+                        lineStyle: { width: layout.pLineWidth },
+                        areaStyle: { opacity: layout.pStackOpacity },
+                        emphasis: { focus: 'series' },
+                        data: []
+                    });
+                    ecOpt.series.push({
+                        ...JSON.parse(newSeries),
+                        ...{ _nameForSorting: yAxisLabel + '+' }
+                    });
+                    // we add it twice.
+                    ecOpt.series.push({
+                        ...JSON.parse(newSeries),
+                        ...{ _nameForSorting: yAxisLabel + '-' }
+                    });
+
+                }
+                // Find all matching series indices
+                found = 0;
+                ecOpt.series.forEach((s, i) => {
+                    if (s.name === yAxisLabel) {
+                        found++;
+
+                        if (found == 1) { // add the postive value or 0 to the first series
+                            ecOpt.series[i].data.push(Math.max(value, 1e-6));
+                        }
+                        if (found == 2) { // add the negative value or -1e-6 to the second series
+                            ecOpt.series[i].data.push(Math.min(value, -1e-6));
+                        }
+                    }
                 });
-                tableHtml += '</tr></thead><tbody>';
-                
-                yAxisLabels.forEach(yLabel => {
-                    tableHtml += '<tr><td style="border:1px solid #ccc;padding:5px;background:#f0f0f0;font-weight:bold;">' + yLabel + '</td>';
+            }
+
+            // Sort legend.data and series based on position in totalVals
+
+            const totalValsKeys = Object.keys(totalVals);
+
+            ecOpt.legend.data?.sort((a, b) => {
+                const posA = legendSortOrder.indexOf(a);
+                const posB = legendSortOrder.indexOf(b);
+                return (posA === -1 ? Infinity : posA) - (posB === -1 ? Infinity : posB);
+            });
+
+            ecOpt.series.sort((a, b) => {
+                const posA = stacksSortOrder.indexOf(a._nameForSorting);
+                const posB = stacksSortOrder.indexOf(b._nameForSorting);
+                return (posA === -1 ? Infinity : posA) - (posB === -1 ? Infinity : posB);
+            });
+
+
+            if (layout.pConsoleLog) console.log('ecOpt', ecOpt);
+            echart.setOption(ecOpt);
+
+            // Initialize second chart
+            var chart2Dom = document.getElementById('chart2_' + ownId);
+            var echart2 = echarts.init(chart2Dom);
+            
+            // Populate ecOpt2 data in legendSortOrder sequence
+            legendSortOrder.forEach(key => {
+                if (totalVals[key] !== undefined) {
+                    ecOpt2.series[0].data.push({
+                        value: totalVals[key],
+                        itemStyle: { color: colors[key] },
+                        // label: { show: true }
+                    });
+                }
+            });
+
+            echart2.setOption(ecOpt2);
+
+            // Build HTML table
+            let tableHtml = '<table style="border-collapse:collapse;width:100%;font-size:12px;">';
+            tableHtml += '<thead><tr><th style="border:1px solid #ccc;padding:5px;background:#f0f0f0;position:sticky;top:0;"></th>';
+            xAxisLabels.forEach(xLabel => {
+                tableHtml += '<th style="border:1px solid #ccc;padding:5px;background:#f0f0f0;position:sticky;top:0;">' + xLabel + '</th>';
+            });
+            tableHtml += '</tr></thead><tbody>';
+
+            legendSortOrder.forEach(yLabel => {
+                if (tableData[yLabel]) {
+                    const bgColor = colors[yLabel] || '#f0f0f0';
+                    const textColor = moreFunctions.getContrastColor(bgColor);
+                    tableHtml += '<tr><td style="border:1px solid #ccc;padding:5px;background:' + bgColor + ';font-weight:bold;color:' + textColor + ';">' + yLabel + '</td>';
                     xAxisLabels.forEach(xLabel => {
                         const val = tableData[yLabel][xLabel];
-                        const cellValue = val !== undefined ? val.toFixed(2) : '';
+                        const cellValue = val !== undefined ? moreFunctions.formatNumber(val, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep) : '';
                         tableHtml += '<td style="border:1px solid #ccc;padding:5px;text-align:right;">' + cellValue + '</td>';
                     });
                     tableHtml += '</tr>';
-                });
-                tableHtml += '</tbody></table>';
-                
-                $('#table_' + ownId).html(tableHtml);
-                
-                // Add toggle functionality
-                $('#toggleBtn_' + ownId).off('click').on('click', function() {
-                    const chartDiv = $('#chart_' + ownId);
-                    const tableDiv = $('#table_' + ownId);
-                    
-                    if (chartDiv.is(':visible')) {
-                        chartDiv.hide();
-                        tableDiv.show();
-                    } else {
-                        tableDiv.hide();
-                        chartDiv.show();
-                        if (echart) echart.resize();
-                    }
-                });
-            }
-            else {
-                $element.html('<div style="padding:10px;color:#900;">No data available to display the chart.</div>');
-            }
+                }
+            });
+            tableHtml += '</tbody></table>';
+
+            $('#table_' + ownId).html(tableHtml);
+
+            // Add 3-way toggle functionality
+            $('#toggleBtn_' + ownId).off('click').on('click', function () {
+                const chartDiv = $('#chart_' + ownId);
+                const chart2Div = $('#chart2_' + ownId);
+                const tableDiv = $('#table_' + ownId);
+
+                if (chartDiv.is(':visible')) {
+                    // Switch from chart to chart2
+                    chartDiv.hide();
+                    chart2Div.show();
+                    tableDiv.hide();
+                    if (echart2) echart2.resize();
+                } else if (chart2Div.is(':visible')) {
+                    // Switch from chart2 to table
+                    chartDiv.hide();
+                    chart2Div.hide();
+                    tableDiv.show();
+                } else {
+                    // Switch from table back to chart
+                    chartDiv.show();
+                    chart2Div.hide();
+                    tableDiv.hide();
+                    if (echart) echart.resize();
+                }
+            });
+
             return qlik.Promise.resolve();
         },
 

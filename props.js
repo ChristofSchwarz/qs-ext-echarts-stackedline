@@ -28,68 +28,111 @@ define(["jquery"], function ($) {
                 items: [
                     {
                         label: "This extension requires 2 dimensions and "
-                            + "1 measures to be rendered. The dimensions are 1) X-Axis values and 2) Stack dimension",
+                            + "1 measures to be rendered. See how to use for more.",
                         component: "text",
 
                     },
-                    {
-                        label: "X-Axis spaces at start/end",
-                        type: "boolean",
-                        defaultValue: false,
-                        ref: "pBoundaryGap"
-                    },
-                    {
-                        label: "Show Label for X Axis",
-                        type: "boolean",
-                        expression: 'optional',
-                        ref: 'pXAxisLabel',
-                        defaultValue: true
-                    },
-                    {
-                        label: "Show Label for Y Axis",
-                        type: "boolean",
-                        expression: 'optional',
-                        ref: 'pYAxisLabel',
-                        defaultValue: true
-                    },
-                    {
-                        label: "Show Legend",
-                        type: "string",
-                        component: "dropdown",
-                        ref: "pShowLegend",
-                        options: [
-                            { value: "right", label: "Right" },
-                            { value: "off", label: "Off" }
-                        ],
-                        defaultValue: "right"
-                    },
-                    {
-                        label: "Stack Opacity",
-                        type: 'number',
-                        component: 'slider',
-                        ref: 'pStackOpacity',
-                        min: 0,
-                        max: 1,
-                        step: 0.1,
-                        defaultValue: 0.7
-                    },
-                    {
-                        label: "Line Width",
-                        type: 'number',
-                        component: 'slider',
-                        ref: 'pLineWidth',
-                        min: 0,
-                        max: 4,
-                        step: 0.5,
-                        defaultValue: 2
-                    },
-                    {
-                        label: "Smoothen Lines",
-                        type: "boolean",
-                        ref: "pSmoothLine",
-                        defaultValue: false
-                    },
-                    subSection('Color Ranges', [
+                    subSection('How to use', [
+                        {
+                            label: "Add 2 dimensions:",
+                            component: "text"
+                        }, {
+                            label: "1) X-Axis values (typically a time dimension)",
+                            component: "text"
+                        }, {
+                            label: "2) Stack dimension (e.g. a country)",
+                            component: "text"
+                        }, {
+                            label: "Add 1 or 2 measures:",
+                            component: "text"
+                        }, {
+                            label: "1) the main value to be plotted",
+                            component: "text"
+                        }, {
+                            label: "2) an optional CSS color for that stack dimension",
+                            component: "text"
+                        }, {
+                            label: "More Documentation",
+                            component: "button",
+                            action: function (arg) {
+                                window.open('https://github.com/ChristofSchwarz/qs-ext-echarts-stackedline/blob/main/README.md', '_blank');
+                            }
+                        },
+                    ]),
+                    subSection('Axis and Legend', [
+                        {
+                            label: "X-Axis spaces at start/end",
+                            type: "boolean",
+                            defaultValue: false,
+                            ref: "pBoundaryGap"
+                        },
+                        {
+                            label: "X-Axis Label Rotation",
+                            type: "string",
+                            component: "dropdown",
+                            ref: "pXAxisRotation",
+                            options: [
+                                { value: "0", label: "Horizontal (0°)" },
+                                { value: "45", label: "Diagonal (45°)" },
+                                { value: "90", label: "Vertical (90°)" }
+                            ],
+                            defaultValue: "0"
+                        },
+                        {
+                            label: "Show Label for X Axis",
+                            type: "boolean",
+                            expression: 'optional',
+                            ref: 'pXAxisLabel',
+                            defaultValue: true
+                        },
+                        {
+                            label: "Show Label for Y Axis",
+                            type: "boolean",
+                            expression: 'optional',
+                            ref: 'pYAxisLabel',
+                            defaultValue: true
+                        },
+                        {
+                            label: "Show Legend",
+                            type: "string",
+                            component: "dropdown",
+                            ref: "pShowLegend",
+                            options: [
+                                { value: "right", label: "Right" },
+                                { value: "off", label: "Off" }
+                            ],
+                            defaultValue: "right"
+                        }
+                    ]),
+                    subSection('Line Settings', [
+                        {
+                            label: "Line Width",
+                            type: 'number',
+                            component: 'slider',
+                            ref: 'pLineWidth',
+                            min: 0,
+                            max: 4,
+                            step: 0.5,
+                            defaultValue: 2
+                        },
+                        {
+                            label: "Smoothen Lines",
+                            type: "boolean",
+                            ref: "pSmoothLine",
+                            defaultValue: false
+                        }
+                    ]),
+                    subSection('Color Settings', [
+                        {
+                            label: "Stack Opacity",
+                            type: 'number',
+                            component: 'slider',
+                            ref: 'pStackOpacity',
+                            min: 0,
+                            max: 1,
+                            step: 0.1,
+                            defaultValue: 0.7
+                        },
                         {
                             label: "Positive Start Color",
                             type: 'string',
@@ -144,6 +187,29 @@ define(["jquery"], function ($) {
                             ref: 'pGridBottom',
                             defaultValue: 0
                         }]
+                    ),
+                    subSection('Number Formatting', [
+                        {
+                            label: "Decimals",
+                            type: 'number',
+                            ref: 'pFmtDecimals',
+                            defaultValue: 2,
+                            expression: 'optional'
+                        },
+                        {
+                            label: "Thousand Separator",
+                            type: 'string',
+                            ref: 'pFmtThousandSep',
+                            defaultValue: "'",
+                            expression: 'optional'
+                        },
+                        {
+                            label: "Decimal Separator",
+                            type: 'string',
+                            ref: 'pFmtDecimalSep',
+                            defaultValue: '.',
+                            expression: 'optional'
+                        }]
                     )
                 ]
             }
@@ -176,13 +242,6 @@ define(["jquery"], function ($) {
                         component: "link",
                         url: 'https://www.databridge.ch'
                     },
-                    // {
-                    //     label: "Open Documentation",
-                    //     component: "button",
-                    //     action: function (arg) {
-                    //         window.open('https://github.com/ChristofSchwarz/qs-ext-echart-stackedline/blob/main/README.md', '_blank');
-                    //     }
-                    // },
                     {
                         type: "boolean",
                         defaultValue: false,
