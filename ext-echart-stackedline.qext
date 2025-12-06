@@ -1,0 +1,16 @@
+{
+  "name": "/\\eCharts Stacked Line",
+  "type": "visualization",
+  "description": "Apache echarts implementation",
+  "icon": "stream",
+  "version": "1.0.003",
+  "author": "Christof Schwarz",
+  "homepage": "www.databridge.ch",
+  "keywords": "qlik-sense, visualization",
+  "license": "MIT",
+  "repository": "https://github.com/ChristofSchwarz/qs-ext-echart-stackedline",
+  "preview": "pics/databridgelogo.png",
+  "dependencies": {
+    "qlik-sense": ">=3.0.x"
+  }
+}
