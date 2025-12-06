@@ -103,7 +103,8 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         if (layout.pConsoleLog) console.log('colors ', colors);
 
         var chartDom = document.getElementById('chart_' + ownId);
-        echart = echarts.init(chartDom, null, { renderer: layout.pEchartRenderer || 'canvas' });
+        context.echart = echarts.init(chartDom, null, { renderer: layout.pEchartRenderer || 'canvas' });
+        echart = context.echart;
 
         var ecOpt = {
             animation: false,
@@ -169,7 +170,8 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
                 icon: 'square',
                 orient: 'vertical',
                 right: 10,
-                top: 'center'
+                top: 'center',
+                type: 'scroll'
             },
             grid: {
                 left: layout.pGridLeft,
@@ -303,7 +305,8 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
 
         // Initialize second chart
         var chart2Dom = document.getElementById('chart2_' + ownId);
-        echart2 = echarts.init(chart2Dom, null, { renderer: layout.pEchartRenderer || 'canvas' });
+        context.echart2 = echarts.init(chart2Dom, null, { renderer: layout.pEchartRenderer || 'canvas' });
+        echart2 = context.echart2;
         
         // Populate ecOpt2 data
         legendSortOrder.forEach(key => {

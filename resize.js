@@ -1,4 +1,4 @@
-define([], function () {
+define(["qlik"], function (qlik) {
     'use strict';
 
     return async function ($element, layout, context) {

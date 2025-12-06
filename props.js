@@ -149,28 +149,77 @@ define(["jquery"], function ($) {
                             type: 'string',
                             expression: 'optional',
                             ref: 'pPosStartColor',
-                            defaultValue: '#102173'
+                            defaultValue: '#BD3933'
                         },
                         {
                             label: "Positive End Color",
                             type: 'string',
                             expression: 'optional',
                             ref: 'pPosEndColor',
-                            defaultValue: '#7EC8E3'
+                            defaultValue: '#F4C2D7'
                         },
                         {
                             label: "Negative Start Color",
                             type: 'string',
                             expression: 'optional',
                             ref: 'pNegStartColor',
-                            defaultValue: '#BD3933'
+                            defaultValue: '#102173'
                         },
                         {
                             label: "Negative End Color",
                             type: 'string',
                             expression: 'optional',
                             ref: 'pNegEndColor',
-                            defaultValue: '#F4C2D7'
+                            defaultValue: '#7EC8E3'
+                        }, 
+                        {
+                            label: "Preview Colors",
+                            component: "button",
+                            action: function (arg) {
+                                const posStart = arg.pPosStartColor;
+                                const posEnd = arg.pPosEndColor;
+                                const negStart = arg.pNegStartColor;
+                                const negEnd = arg.pNegEndColor;
+                                
+                                const modal = $('<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:10000;min-width:300px;">' +
+                                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">' +
+                                    '<h3 style="margin:0;">Color Preview</h3>' +
+                                    '<span style="cursor:pointer;font-size:20px;font-weight:bold;color:#999;">&times;</span>' +
+                                    '</div>' +
+                                    '<div style="margin-bottom:15px;">' +
+                                    '<div style="font-weight:bold;margin-bottom:5px;">Positive Colors:</div>' +
+                                    '<div style="display:flex;align-items:center;gap:10px;">' +
+                                    '<div style="width:50px;height:30px;background:' + posStart + ';border:1px solid #ccc;"></div>' +
+                                    '<span>→</span>' +
+                                    '<div style="width:50px;height:30px;background:' + posEnd + ';border:1px solid #ccc;"></div>' +
+                                    '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + posStart + ', ' + posEnd + ');border:1px solid #ccc;"></div>' +
+                                    '</div>' +
+                                    '</div>' +
+                                    '<div>' +
+                                    '<div style="font-weight:bold;margin-bottom:5px;">Negative Colors:</div>' +
+                                    '<div style="display:flex;align-items:center;gap:10px;">' +
+                                    '<div style="width:50px;height:30px;background:' + negStart + ';border:1px solid #ccc;"></div>' +
+                                    '<span>→</span>' +
+                                    '<div style="width:50px;height:30px;background:' + negEnd + ';border:1px solid #ccc;"></div>' +
+                                    '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + negStart + ', ' + negEnd + ');border:1px solid #ccc;"></div>' +
+                                    '</div>' +
+                                    '</div>' +
+                                    '</div>');
+                                
+                                const overlay = $('<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;"></div>');
+                                
+                                $('body').append(overlay).append(modal);
+                                
+                                modal.find('span').on('click', function() {
+                                    modal.remove();
+                                    overlay.remove();
+                                });
+                                
+                                overlay.on('click', function() {
+                                    modal.remove();
+                                    overlay.remove();
+                                });
+                            }
                         }]
                     ),
                     subSection('Grid Spacing', [
