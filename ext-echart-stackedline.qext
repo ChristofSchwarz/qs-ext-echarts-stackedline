@@ -3,7 +3,7 @@
   "type": "visualization",
   "description": "Apache echarts implementation",
   "icon": "stream",
-  "version": "1.0.004",
+  "version": "1.0.005",
   "author": "Christof Schwarz",
   "homepage": "www.databridge.ch",
   "keywords": "qlik-sense, visualization",

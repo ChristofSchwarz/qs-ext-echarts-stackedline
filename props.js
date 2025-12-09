@@ -119,12 +119,12 @@ define(["jquery"], function ($) {
                         {
                             label: "Line Width",
                             type: 'number',
-                            component: 'slider',
+                            // component: 'slider',
                             ref: 'pLineWidth',
-                            min: 0,
-                            max: 4,
-                            step: 0.5,
-                            defaultValue: 2
+                            // min: 0,
+                            // max: 4,
+                            // step: 0.5,
+                            defaultValue: 0.5
                         },
                         {
                             label: "Smoothen Lines",
