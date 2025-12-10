@@ -229,7 +229,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             const xAxisLabel = row[0].qText;
             const yAxisLabel = row[1].qText;
             const value = row[2].qNum;
-            
+        
             // Check for optional 4th element (color code)
             if (row[3] && row[3].qText && row[3].qText.length > 1) {
                 colors[yAxisLabel] = row[3].qText;
@@ -273,18 +273,18 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
                 });
             }
             
-            found = 0;
-            ecOpt.series.forEach((s, i) => {
-                if (s.name === yAxisLabel) {
-                    found++;
-                    if (found == 1) {
-                        ecOpt.series[i].data.push(Math.max(value, 1e-6));
-                    }
-                    if (found == 2) {
-                        ecOpt.series[i].data.push(Math.min(value, -1e-6));
-                    }
-                }
-            });
+            // found = 0;
+            // ecOpt.series.forEach((s, i) => {
+            //     if (s.name === yAxisLabel) {
+            //         found++;
+            //         if (found == 1) {
+            //             ecOpt.series[i].data.push(!isNaN(value) ? Math.max(value, 1e-6): null);
+            //         }
+            //         if (found == 2) {
+            //             ecOpt.series[i].data.push(!isNaN(value) ? Math.min(value, -1e-6): null);
+            //         }
+            //     }
+            // });
         }
 
         // Sort legend and series
@@ -299,6 +299,35 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             const posB = stacksSortOrder.indexOf(b._nameForSorting);
             return (posA === -1 ? Infinity : posA) - (posB === -1 ? Infinity : posB);
         });
+
+        // Fill missing xLabel values with null in tableData
+        Object.keys(tableData).forEach(yLabel => {
+            xAxisLabels.forEach(xLabel => {
+                if (tableData[yLabel][xLabel] === undefined) {
+                    tableData[yLabel][xLabel] = null;
+                }
+            });
+        });
+
+        // Populate ecOpt series data from tableData
+        Object.keys(tableData).forEach(yAxisLabel => {
+            xAxisLabels.forEach(xAxisLabel => {
+                // console.log('Filling data for series', yAxisLabel, xAxisLabel);
+                const value = tableData[yAxisLabel][xAxisLabel];
+                
+                // Find the series with '+' suffix
+                const seriesPlus = ecOpt.series.find(s => s._nameForSorting === yAxisLabel + '+');
+                if (seriesPlus) {
+                    seriesPlus.data.push(!isNaN(value) && value !== null ? Math.max(value, 1e-6) : null);
+                }
+                
+                // Find the series with '-' suffix
+                const seriesMinus = ecOpt.series.find(s => s._nameForSorting === yAxisLabel + '-');
+                if (seriesMinus) {
+                    seriesMinus.data.push(!isNaN(value) && value !== null ? Math.min(value, -1e-6) : null);
+                }
+            });
+        });        
 
         if (layout.pConsoleLog) console.log('ecOpt', ecOpt);
         echart.setOption(ecOpt);
@@ -319,6 +348,8 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         });
 
         echart2.setOption(ecOpt2);
+
+
 
         // Build HTML table
         let tableHtml = '<table style="border-collapse:collapse;width:100%;font-size:12px;">';
@@ -371,6 +402,8 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         // Store chart instances for resize
         context.echart = echart;
         context.echart2 = echart2;
+
+        if(layout.pConsoleLog) console.log('tableData', tableData);
 
         return qlik.Promise.resolve();
     };

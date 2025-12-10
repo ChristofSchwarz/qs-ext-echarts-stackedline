@@ -10,11 +10,11 @@ All labels and colors can be defined in the extension.
 
 <img width="1411" height="410" alt="Screenshot 2025-12-02 184122" src="https://github.com/user-attachments/assets/4566d7d0-8a02-4491-8eda-3874394e5f21" />
 
-OS	4	 	#DAE9F8
-OS	3	 	#A6C9EC
-OS	2	 	#4D93D9
-OS	1	 	#215C98
-US	1	 	#CC0000
-US	2	 	#FF5050
-US	3	 	#FF9933
-US	4	 	#FFCC99
+#DAE9F8
+#A6C9EC
+#4D93D9
+#215C98
+#CC0000
+#FF5050
+#FF9933
+#FFCC99
