@@ -138,25 +138,68 @@ define([
 
             // Count positives and negatives
             const positives = [];
+            const positivesCohort0or1 = [];
+            const positivesCohort2 = [];
             const negatives = [];
+            const negativesCohort0or1 = [];
+            const negativesCohort2 = [];
             Object.entries(totalVals).forEach(([key, value]) => {
                 if (value >= 0) {
-                    positives.push(key);
+                    positives.push(key); // append key to positives
+                    if (inCohort[key] == 2) {
+                        positivesCohort2.push(key);
+                    } else {
+                        positivesCohort0or1.push(key);
+                    }
                 } else {
-                    negatives.unshift(key);
+                    negatives.unshift(key); // prepend key to negatives for reverse order
+                    if (inCohort[key] == 2) {
+                        negativesCohort2.unshift(key);
+                    } else {
+                        negativesCohort0or1.unshift(key);
+                    }
                 }
             });
-            const positivesPlus = positives.map(item => item + '+');
-            const positivesMinus = positives.map(item => item + '-');
-            const negativesPlus = negatives.map(item => item + '+');
-            const negativesMinus = negatives.map(item => item + '-');
+            // make copies of positives and negatives with +/- suffixes
+            // const positivesPlus = positives.map(item => item + '+');
+            const positivesCohort0or1Plus = positivesCohort0or1.map(item => item + '+');
+            const positivesCohort2Plus = positivesCohort2.map(item => item + '+');
+            // const positivesMinus = positives.map(item => item + '-');
+            const positivesCohort0or1Minus = positivesCohort0or1.map(item => item + '-');
+            const positivesCohort2Minus = positivesCohort2.map(item => item + '-');
+            // const negativesPlus = negatives.map(item => item + '+');
+            const negativesCohort0or1Plus = negativesCohort0or1.map(item => item + '+');
+            const negativesCohort2Plus = negativesCohort2.map(item => item + '+');
+            // const negativesMinus = negatives.map(item => item + '-');
+            const negativesCohort0or1Minus = negativesCohort0or1.map(item => item + '-');
+            const negativesCohort2Minus = negativesCohort2.map(item => item + '-');
 
-            const legendSortOrder = [...positives].reverse().concat(negatives);
+            // --------------------------------
+            // Sorting of legend and stacks
+            // --------------------------------
+
+            var legendSortOrder = [...positivesCohort2].reverse()
+                .concat([...positivesCohort0or1].reverse())
+                .concat(negativesCohort0or1)
+                .concat(negativesCohort2);
+
             if (layout.pConsoleLog) console.log('legendSortOrder', legendSortOrder);
-            const stacksSortOrder = positivesPlus.concat(negativesPlus).concat(negativesMinus).concat(positivesMinus);
+
+            //var stacksSortOrder = positivesPlus.concat(negativesPlus).concat(negativesMinus).concat(positivesMinus);
+            var stacksSortOrder = positivesCohort0or1Plus
+                .concat(positivesCohort2Plus)
+                .concat(negativesCohort0or1Plus)
+                .concat(negativesCohort2Plus)
+                .concat(negativesCohort0or1Minus)
+                .concat(negativesCohort2Minus)
+                .concat(positivesCohort0or1Minus)
+                .concat(positivesCohort2Minus);
+
             if (layout.pConsoleLog) console.log('stacksSortOrder', stacksSortOrder);
 
+            // --------------------------------
             // Here follow the coloring rules, we have 4 color gradients: positives, negatives, alt1, alt2
+            // --------------------------------
 
             // Create colorsPositives and colorsNegatives: subset of positives where inCohort[key] == 0
             const colorsPositives = positives.filter(key => inCohort[key] == 0);
@@ -183,7 +226,6 @@ define([
                 colors[key] = moreFunctions.interpolateColor(layout.pAlt1StartColor, layout.pAlt1EndColor, factor);
             });
 
-
             // Assign colors for alt2
             colorsAlt2.forEach((key, index) => {
                 const factor = colorsAlt2.length > 1 ? index / (colorsAlt2.length - 1) : 0;
@@ -191,6 +233,8 @@ define([
             });
 
             if (layout.pConsoleLog) console.log('colors ', colors);
+
+
 
             var chartDom = document.getElementById('chart_' + ownId);
             globalSettings[ownId].echart1 = echarts.init(chartDom, null, { renderer: layout.pEchartRenderer || 'canvas' });
@@ -329,9 +373,9 @@ define([
                 const value = row[2].qNum;
 
                 // Check for optional 4th element (color code)
-                if (row[3] && row[3].qText && row[3].qText.length > 1) {
-                    colors[yAxisLabel] = row[3].qText;
-                }
+                // if (row[3] && row[3].qText && row[3].qText.length > 1) {
+                //     colors[yAxisLabel] = row[3].qText;
+                // }
 
                 // Build table data structure
                 if (!tableData[yAxisLabel]) {
