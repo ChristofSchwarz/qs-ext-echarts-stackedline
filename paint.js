@@ -12,10 +12,12 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         const mode = qlik.navigation.getMode();
         if (layout.pConsoleLog) console.log(ownId, 'event=paint', 'mode=' + mode, 'layout', layout);
         const app = qlik.currApp(self);
+        if (layout.pConsoleLog) console.log(ownId, 'app', app);
+
         const thisSheetId = qlik.navigation.getCurrentSheetId().sheetId;
         const enigma = app.model.enigmaModel;
         const props = await app.getObjectProperties(ownId);
-        if (layout.pConsoleLog) console.log(ownId, 'properties', props.properties);
+        if (layout.pConsoleLog) console.log(ownId, 'props.properties', props.properties);
 
         if (props.properties.qHyperCubeDef.qSuppressZero) {
             $element.html('<div style="padding:10px;color:#900;">The option "Include Zero Values" is disabled. Please enable it to render the chart.</div>');
@@ -47,13 +49,43 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
 
         const dim2 = layout.qHyperCube.qDimensionInfo[1].qEffectiveDimensionName;
         const measureFormula = props.properties?.qHyperCubeDef.qMeasures[0]?.qDef.qDef;
+        var totalVals = {};
+        var inCohort = {};
 
+ // experiment
+ try {
+    const totalsObj = await app.createGenericObject({
+        qInfo: {qType: "table"},
+        qHyperCubeDef: {
+            qDimensions: [ props.properties?.qHyperCubeDef.qDimensions[1] ],
+            qMeasures: [
+                props.properties.qHyperCubeDef.qMeasures[0], // main kpi measure
+                props.properties.qHyperCubeDef.qMeasures[1] || {qDef: {qDef: '=Null()'}}  // optional cohort measure
+            ],
+            qInitialDataFetch: [{qWidth: 3, qHeight: 3333}],
+            qInterColumnSortOrder: [1, 0, 2] // sort by main kpi measure descending
+        }
+    });
+    console.log('Session Object Created for Testing:', totalsObj);
+    totalsObj.layout.qHyperCube?.qDataPages[0].qMatrix.forEach(row => {
+        const dim = row[0].qText;
+        const val = row[1].qNum == 'NaN' ? null : row[1].qNum;
+        const cohort = row[2].qNum == 'NaN' ? null : row[2].qNum;
+        totalVals[dim] = val;
+        inCohort[dim] = cohort || 0;
+    })
+
+ } catch (error) {
+    console.error('Error creating session totalsObj for testing:', error);
+ }
+        var colors = {};
+ /*
         // build engine expression to get total values per stack dimension
         const totalValsDef = `Aggr('"' & [${dim2}] & '":' & Num(${measureFormula},'','.',' '), [${dim2}])`;
         if (layout.pConsoleLog) console.log('Engine to calculate totalValsDef', totalValsDef);
         var totalVals = await enigma.evaluate(`=Concat(${totalValsDef}, ',')`);
 
-        var colors = {};
+        
         try {
             totalVals = JSON.parse('{' + totalVals + '}');
         }
@@ -66,6 +98,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         totalVals = Object.fromEntries(
             Object.entries(totalVals).sort((a, b) => b[1] - a[1])
         );
+        */
         if (layout.pConsoleLog) console.log('totalVals ', totalVals);
 
         // Count positives and negatives
@@ -88,18 +121,40 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         const stacksSortOrder = positivesPlus.concat(negativesPlus).concat(negativesMinus).concat(positivesMinus);
         if (layout.pConsoleLog) console.log('stacksSortOrder', stacksSortOrder);
 
+        // Here follow the coloring rules, we have 4 color gradients: positives, negatives, alt1, alt2
+
+        // Create colorsPositives and colorsNegatives: subset of positives where inCohort[key] == 0
+        const colorsPositives = positives.filter(key => inCohort[key] == 0);
+        const colorsNegatives = negatives.filter(key => inCohort[key] == 0);
+        const colorsAlt1 = Object.keys(inCohort).filter(key => inCohort[key] == 1);
+        const colorsAlt2 = Object.keys(inCohort).filter(key => inCohort[key] == 2);
+        // console.log('color subsets', {colorsPositives, colorsNegatives, colorsAlt1, colorsAlt2});
+        
         // Assign colors for positives
-        positives.forEach((key, index) => {
-            const factor = positives.length > 1 ? index / (positives.length - 1) : 0;
+        colorsPositives.forEach((key, index) => {
+            const factor = colorsPositives.length > 1 ? index / (colorsPositives.length - 1) : 0;
             colors[key] = moreFunctions.interpolateColor(layout.pPosStartColor, layout.pPosEndColor, factor);
         });
 
         // Assign colors for negatives
-        negatives.forEach((key, index) => {
-            const factor = negatives.length > 1 ? index / (negatives.length - 1) : 0;
+        colorsNegatives.forEach((key, index) => {
+            const factor = colorsNegatives.length > 1 ? index / (colorsNegatives.length - 1) : 0;
             colors[key] = moreFunctions.interpolateColor(layout.pNegStartColor, layout.pNegEndColor, factor);
         });
 
+        // Assign colors for alt1
+        colorsAlt1.forEach((key, index) => {
+            const factor = colorsAlt1.length > 1 ? index / (colorsAlt1.length - 1) : 0;
+            colors[key] = moreFunctions.interpolateColor(layout.pAlt1StartColor, layout.pAlt1EndColor, factor);
+        });
+
+      
+        // Assign colors for alt2
+        colorsAlt2.forEach((key, index) => {
+            const factor = colorsAlt2.length > 1 ? index / (colorsAlt2.length - 1) : 0;
+            colors[key] = moreFunctions.interpolateColor(layout.pAlt2StartColor, layout.pAlt2EndColor, factor);
+        });
+        
         if (layout.pConsoleLog) console.log('colors ', colors);
 
         var chartDom = document.getElementById('chart_' + ownId);
@@ -190,6 +245,12 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             title: {
                 text: 'Total Values by ' + layout.qHyperCube.qDimensionInfo[1].qFallbackTitle
             },
+            tooltip: {
+                trigger: 'item',
+                formatter: function(params) {
+                    return params.name + ': ' + moreFunctions.formatNumber(params.value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix);
+                }
+            },
             xAxis: {
                 type: 'category',
                 data: legendSortOrder
@@ -207,11 +268,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
                     data: [],
                     type: 'bar',
                     label: {
-                        show: true,
-                        position: 'top',
-                        formatter: function (params) {
-                            return moreFunctions.formatNumber(params.value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix);
-                        }
+                        show: false
                     }
                 }
             ]

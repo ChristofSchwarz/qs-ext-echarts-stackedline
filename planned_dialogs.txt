@@ -1,0 +1,2 @@
+add another option "pDefaultToggle" with 3 values: "Line Chart", "Summary Bar Chart", "Table Grid" in the section "Toggle/Save As Image"
+
