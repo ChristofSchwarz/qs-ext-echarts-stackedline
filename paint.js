@@ -8,7 +8,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         var self = context.self;
         const ownId = context.ownId;
         const echarts = context.echarts;
-        
+
         const mode = qlik.navigation.getMode();
         if (layout.pConsoleLog) console.log(ownId, 'event=paint', 'mode=' + mode, 'layout', layout);
         const app = qlik.currApp(self);
@@ -23,10 +23,10 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             $element.html('<div style="padding:10px;color:#900;">The option "Include Zero Values" is disabled. Please enable it to render the chart.</div>');
             return qlik.Promise.resolve();
         };
-        
+
         // Build toggle button style based on position settings
         let toggleBtnStyle = 'position:absolute;cursor:pointer;background:' + layout.pIconBgColor + ';color:' + layout.pIconFontColor + ';border-radius:50%;width:20px;height:20px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;z-index:1000;';
-        
+
         if (layout.pIconPosition === 'off') {
             toggleBtnStyle += 'display:none;';
         } else if (layout.pIconPosition === 'top-left') {
@@ -38,7 +38,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         } else if (layout.pIconPosition === 'bottom-left') {
             toggleBtnStyle += 'bottom:' + layout.pIconOffsetBottom + 'px;left:' + layout.pIconOffsetLeft + 'px;';
         }
-        
+
         $element.html(
             '<div id="parent_' + ownId + '" style="height:100%;width:100%;position:relative;">'
             + '<span id="toggleBtn_' + ownId + '" style="' + toggleBtnStyle + '" title="Toggle view">i</span>'
@@ -49,56 +49,50 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
 
         const dim2 = layout.qHyperCube.qDimensionInfo[1].qEffectiveDimensionName;
         const measureFormula = props.properties?.qHyperCubeDef.qMeasures[0]?.qDef.qDef;
+
         var totalVals = {};
         var inCohort = {};
 
- // experiment
- try {
-    const totalsObj = await app.createGenericObject({
-        qInfo: {qType: "table"},
-        qHyperCubeDef: {
-            qDimensions: [ props.properties?.qHyperCubeDef.qDimensions[1] ],
-            qMeasures: [
-                props.properties.qHyperCubeDef.qMeasures[0], // main kpi measure
-                props.properties.qHyperCubeDef.qMeasures[1] || {qDef: {qDef: '=Null()'}}  // optional cohort measure
-            ],
-            qInitialDataFetch: [{qWidth: 3, qHeight: 3333}],
-            qInterColumnSortOrder: [1, 0, 2] // sort by main kpi measure descending
-        }
-    });
-    console.log('Session Object Created for Testing:', totalsObj);
-    totalsObj.layout.qHyperCube?.qDataPages[0].qMatrix.forEach(row => {
-        const dim = row[0].qText;
-        const val = row[1].qNum == 'NaN' ? null : row[1].qNum;
-        const cohort = row[2].qNum == 'NaN' ? null : row[2].qNum;
-        totalVals[dim] = val;
-        inCohort[dim] = cohort || 0;
-    })
-
- } catch (error) {
-    console.error('Error creating session totalsObj for testing:', error);
- }
-        var colors = {};
- /*
-        // build engine expression to get total values per stack dimension
-        const totalValsDef = `Aggr('"' & [${dim2}] & '":' & Num(${measureFormula},'','.',' '), [${dim2}])`;
-        if (layout.pConsoleLog) console.log('Engine to calculate totalValsDef', totalValsDef);
-        var totalVals = await enigma.evaluate(`=Concat(${totalValsDef}, ',')`);
-
+        // Create a copy of qInterColumnSortOrder, skipping 1 and decrementing values > 1 by 1
+        let origSortOrder = props.properties.qHyperCubeDef.qInterColumnSortOrder || [];
+        let sortOrderCopy = origSortOrder.reduce((arr, val) => {
+            if (val === 1) return arr;
+            arr.push(val > 1 ? val - 1 : val);
+            return arr;
+        }, []);
+        // Example: [0,2,1,3] -> [0,1,2]
+        console.log('Original Sort Order:', origSortOrder, 'Adjusted Sort Order for totalsObj:', sortOrderCopy);
         
+        // creating an ad-hoc session object to get total values per stack dimension
         try {
-            totalVals = JSON.parse('{' + totalVals + '}');
+            const totalsObj = await app.createGenericObject({
+                qInfo: { qType: "table" },
+                qHyperCubeDef: {
+                    qDimensions: [props.properties?.qHyperCubeDef.qDimensions[1]],
+                    qMeasures: [
+                        props.properties.qHyperCubeDef.qMeasures[0], // main kpi measure
+                        props.properties.qHyperCubeDef.qMeasures[1] || { qDef: { qDef: '=Null()' } }  // optional cohort measure
+                    ],
+                    qInitialDataFetch: [{ qWidth: 3, qHeight: 3333 }],
+                    qInterColumnSortOrder: sortOrderCopy
+                }
+            });
+            
+            if (layout.pConsoleLog) console.log('Session Object Created for Testing:', totalsObj);
+            
+            totalsObj.layout.qHyperCube?.qDataPages[0].qMatrix.forEach(row => {
+                const dim = row[0].qText;
+                const val = row[1].qNum == 'NaN' ? null : row[1].qNum;
+                const cohort = row[2].qNum == 'NaN' ? null : row[2].qNum;
+                totalVals[dim] = val;
+                inCohort[dim] = cohort || 0;
+            })
+
+        } catch (error) {
+            console.error('Error creating session totalsObj for testing:', error);
         }
-        catch (e) {
-            console.error('Error parsing totalVals', e, totalVals);
-            $element.html('<div style="padding:10px;color:#900;">No total data available to display the chart.</div>');
-            return qlik.Promise.resolve();
-        }
-        // Sort totalVals by values (descending)
-        totalVals = Object.fromEntries(
-            Object.entries(totalVals).sort((a, b) => b[1] - a[1])
-        );
-        */
+        var colors = {};
+        
         if (layout.pConsoleLog) console.log('totalVals ', totalVals);
 
         // Count positives and negatives
@@ -129,7 +123,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         const colorsAlt1 = Object.keys(inCohort).filter(key => inCohort[key] == 1);
         const colorsAlt2 = Object.keys(inCohort).filter(key => inCohort[key] == 2);
         // console.log('color subsets', {colorsPositives, colorsNegatives, colorsAlt1, colorsAlt2});
-        
+
         // Assign colors for positives
         colorsPositives.forEach((key, index) => {
             const factor = colorsPositives.length > 1 ? index / (colorsPositives.length - 1) : 0;
@@ -148,13 +142,13 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             colors[key] = moreFunctions.interpolateColor(layout.pAlt1StartColor, layout.pAlt1EndColor, factor);
         });
 
-      
+
         // Assign colors for alt2
         colorsAlt2.forEach((key, index) => {
             const factor = colorsAlt2.length > 1 ? index / (colorsAlt2.length - 1) : 0;
             colors[key] = moreFunctions.interpolateColor(layout.pAlt2StartColor, layout.pAlt2EndColor, factor);
         });
-        
+
         if (layout.pConsoleLog) console.log('colors ', colors);
 
         var chartDom = document.getElementById('chart_' + ownId);
@@ -247,7 +241,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             },
             tooltip: {
                 trigger: 'item',
-                formatter: function(params) {
+                formatter: function (params) {
                     return params.name + ': ' + moreFunctions.formatNumber(params.value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix);
                 }
             },
@@ -286,7 +280,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             const xAxisLabel = row[0].qText;
             const yAxisLabel = row[1].qText;
             const value = row[2].qNum;
-        
+
             // Check for optional 4th element (color code)
             if (row[3] && row[3].qText && row[3].qText.length > 1) {
                 colors[yAxisLabel] = row[3].qText;
@@ -329,7 +323,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
                     ...{ _nameForSorting: yAxisLabel + '-' }
                 });
             }
-            
+
             // found = 0;
             // ecOpt.series.forEach((s, i) => {
             //     if (s.name === yAxisLabel) {
@@ -371,20 +365,20 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
             xAxisLabels.forEach(xAxisLabel => {
                 // console.log('Filling data for series', yAxisLabel, xAxisLabel);
                 const value = tableData[yAxisLabel][xAxisLabel];
-                
+
                 // Find the series with '+' suffix
                 const seriesPlus = ecOpt.series.find(s => s._nameForSorting === yAxisLabel + '+');
                 if (seriesPlus) {
                     seriesPlus.data.push(!isNaN(value) && value !== null ? Math.max(value, 1e-6) : null);
                 }
-                
+
                 // Find the series with '-' suffix
                 const seriesMinus = ecOpt.series.find(s => s._nameForSorting === yAxisLabel + '-');
                 if (seriesMinus) {
                     seriesMinus.data.push(!isNaN(value) && value !== null ? Math.min(value, -1e-6) : null);
                 }
             });
-        });        
+        });
 
         if (layout.pConsoleLog) console.log('ecOpt', ecOpt);
         echart.setOption(ecOpt);
@@ -393,7 +387,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         var chart2Dom = document.getElementById('chart2_' + ownId);
         context.echart2 = echarts.init(chart2Dom, null, { renderer: layout.pEchartRenderer || 'canvas' });
         echart2 = context.echart2;
-        
+
         // Populate ecOpt2 data
         legendSortOrder.forEach(key => {
             if (totalVals[key] !== undefined) {
@@ -460,7 +454,7 @@ define(["qlik", "jquery", "./moreFunctions"], function (qlik, $, moreFunctions) 
         context.echart = echart;
         context.echart2 = echart2;
 
-        if(layout.pConsoleLog) console.log('tableData', tableData);
+        if (layout.pConsoleLog) console.log('tableData', tableData);
 
         return qlik.Promise.resolve();
     };
