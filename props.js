@@ -171,34 +171,70 @@ define(["jquery"], function ($) {
                             expression: 'optional',
                             ref: 'pNegEndColor',
                             defaultValue: '#7EC8E3'
-                        }, 
+                        },
+                        {
+                            label: "If you add a 2nd measure to this chart, you will get additional colors"
+                                + " for alternative cohorts of the stack dimension (dimension 2).",
+                            component: "text",
+                            show: function (arg) {
+                                return arg.qHyperCubeDef.qMeasures.length <= 1;
+                            }
+                        },
+                        {
+                            label: "Below Alternative 1 colors are only used, if"
+                                + " measure 2 has the value 1 for the stack dimension (dimension 2).",
+                            component: "text",
+                            show: function (arg) {
+                                return arg.qHyperCubeDef.qMeasures.length > 1;
+                            }
+                        },
                         {
                             label: "Alternative 1 Start Color",
                             type: 'string',
                             expression: 'optional',
                             ref: 'pAlt1StartColor',
-                            defaultValue: '#FFA500'
+                            defaultValue: '#FFA500',
+                            show: function (arg) {
+                                return arg.qHyperCubeDef.qMeasures.length > 1;
+                            }
                         },
                         {
                             label: "Alternative 1 End Color",
                             type: 'string',
                             expression: 'optional',
                             ref: 'pAlt1EndColor',
-                            defaultValue: '#FFD700'
+                            defaultValue: '#FFD700',
+                            show: function (arg) {
+                                return arg.qHyperCubeDef.qMeasures.length > 1;
+                            }
+                        },
+                        {
+                            label: "Below Alternative 2 colors are only used, if"
+                                + " measure 2 has the value 2 for the stack dimension (dimension 2).",
+                            component: "text",
+                            show: function (arg) {
+                                return arg.qHyperCubeDef.qMeasures.length > 1;
+                            }
                         },
                         {
                             label: "Alternative 2 Start Color",
                             type: 'string',
                             expression: 'optional',
                             ref: 'pAlt2StartColor',
-                            defaultValue: '#888888'
+                            defaultValue: '#888888',
+                            show: function (arg) {
+                                return arg.qHyperCubeDef.qMeasures.length > 1;
+                            }
                         },
                         {
                             label: "Alternative 2 End Color",
                             type: 'string',
                             expression: 'optional',
                             ref: 'pAlt2EndColor',
-                            defaultValue: '#E0E0E0'
+                            defaultValue: '#E0E0E0',
+                            show: function (arg) {
+                                return arg.qHyperCubeDef.qMeasures.length > 1;
+                            }
                         },
                         {
                             label: "Preview Colors",
@@ -215,57 +251,59 @@ define(["jquery"], function ($) {
 
                                 const modal = $('<div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,0.3);z-index:10000;min-width:340px;">' +
                                     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">' +
-                                        '<h3 style="margin:0;">Color Preview</h3>' +
-                                        '<span style="cursor:pointer;font-size:20px;font-weight:bold;color:#999;">&times;</span>' +
+                                    '<h3 style="margin:0;">Color Preview</h3>' +
+                                    '<span style="cursor:pointer;font-size:20px;font-weight:bold;color:#999;">&times;</span>' +
                                     '</div>' +
                                     '<div style="margin-bottom:15px;">' +
-                                        '<div style="font-weight:bold;margin-bottom:5px;">Positive Colors:</div>' +
-                                        '<div style="display:flex;align-items:center;gap:10px;">' +
-                                            '<div style="width:50px;height:30px;background:' + posStart + ';border:1px solid #ccc;"></div>' +
-                                            '<span>→</span>' +
-                                            '<div style="width:50px;height:30px;background:' + posEnd + ';border:1px solid #ccc;"></div>' +
-                                            '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + posStart + ', ' + posEnd + ');border:1px solid #ccc;"></div>' +
-                                        '</div>' +
+                                    '<div style="font-weight:bold;margin-bottom:5px;">Positive Colors:</div>' +
+                                    '<div style="display:flex;align-items:center;gap:10px;">' +
+                                    '<div style="width:50px;height:30px;background:' + posStart + ';border:1px solid #ccc;"></div>' +
+                                    '<span>→</span>' +
+                                    '<div style="width:50px;height:30px;background:' + posEnd + ';border:1px solid #ccc;"></div>' +
+                                    '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + posStart + ', ' + posEnd + ');border:1px solid #ccc;"></div>' +
+                                    '</div>' +
                                     '</div>' +
                                     '<div style="margin-bottom:15px;">' +
-                                        '<div style="font-weight:bold;margin-bottom:5px;">Negative Colors:</div>' +
-                                        '<div style="display:flex;align-items:center;gap:10px;">' +
-                                            '<div style="width:50px;height:30px;background:' + negStart + ';border:1px solid #ccc;"></div>' +
-                                            '<span>→</span>' +
-                                            '<div style="width:50px;height:30px;background:' + negEnd + ';border:1px solid #ccc;"></div>' +
-                                            '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + negStart + ', ' + negEnd + ');border:1px solid #ccc;"></div>' +
-                                        '</div>' +
+                                    '<div style="font-weight:bold;margin-bottom:5px;">Negative Colors:</div>' +
+                                    '<div style="display:flex;align-items:center;gap:10px;">' +
+                                    '<div style="width:50px;height:30px;background:' + negStart + ';border:1px solid #ccc;"></div>' +
+                                    '<span>→</span>' +
+                                    '<div style="width:50px;height:30px;background:' + negEnd + ';border:1px solid #ccc;"></div>' +
+                                    '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + negStart + ', ' + negEnd + ');border:1px solid #ccc;"></div>' +
                                     '</div>' +
-                                    '<div style="margin-bottom:15px;">' +
+                                    '</div>' +
+                                    (arg.qHyperCubeDef.qMeasures.length > 1 ? (
+                                        '<div style="margin-bottom:15px;">' +
                                         '<div style="font-weight:bold;margin-bottom:5px;">Alternative 1 Colors:</div>' +
                                         '<div style="display:flex;align-items:center;gap:10px;">' +
-                                            '<div style="width:50px;height:30px;background:' + alt1Start + ';border:1px solid #ccc;"></div>' +
-                                            '<span>→</span>' +
-                                            '<div style="width:50px;height:30px;background:' + alt1End + ';border:1px solid #ccc;"></div>' +
-                                            '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + alt1Start + ', ' + alt1End + ');border:1px solid #ccc;"></div>' +
+                                        '<div style="width:50px;height:30px;background:' + alt1Start + ';border:1px solid #ccc;"></div>' +
+                                        '<span>→</span>' +
+                                        '<div style="width:50px;height:30px;background:' + alt1End + ';border:1px solid #ccc;"></div>' +
+                                        '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + alt1Start + ', ' + alt1End + ');border:1px solid #ccc;"></div>' +
                                         '</div>' +
-                                    '</div>' +
-                                    '<div style="margin-bottom:0;">' +
+                                        '</div>' +
+                                        '<div style="margin-bottom:0;">' +
                                         '<div style="font-weight:bold;margin-bottom:5px;">Alternative 2 Colors:</div>' +
                                         '<div style="display:flex;align-items:center;gap:10px;">' +
-                                            '<div style="width:50px;height:30px;background:' + alt2Start + ';border:1px solid #ccc;"></div>' +
-                                            '<span>→</span>' +
-                                            '<div style="width:50px;height:30px;background:' + alt2End + ';border:1px solid #ccc;"></div>' +
-                                            '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + alt2Start + ', ' + alt2End + ');border:1px solid #ccc;"></div>' +
+                                        '<div style="width:50px;height:30px;background:' + alt2Start + ';border:1px solid #ccc;"></div>' +
+                                        '<span>→</span>' +
+                                        '<div style="width:50px;height:30px;background:' + alt2End + ';border:1px solid #ccc;"></div>' +
+                                        '<div style="flex:1;height:30px;background:linear-gradient(to right, ' + alt2Start + ', ' + alt2End + ');border:1px solid #ccc;"></div>' +
                                         '</div>' +
-                                    '</div>' +
-                                '</div>');
+                                        '</div>'
+                                    ) : '') +
+                                    '</div>');
 
                                 const overlay = $('<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:9999;"></div>');
 
                                 $('body').append(overlay).append(modal);
 
-                                modal.find('span').on('click', function() {
+                                modal.find('span').on('click', function () {
                                     modal.remove();
                                     overlay.remove();
                                 });
 
-                                overlay.on('click', function() {
+                                overlay.on('click', function () {
                                     modal.remove();
                                     overlay.remove();
                                 });

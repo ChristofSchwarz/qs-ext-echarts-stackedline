@@ -29,9 +29,8 @@ define(["qlik",
             qHyperCubeDef: {
                 qInitialDataFetch: [{
                     qWidth: 4,
-                    qHeight: Math.floor(10000 / 4) // divide 10000 by qWidth
-                }],
-                // qMeasures: JSON.parse(initialProps).qHyperCubeDef.qMeasures
+                    qHeight: 2500 // divide 10000 by qWidth
+                }]
             }
         },
 
