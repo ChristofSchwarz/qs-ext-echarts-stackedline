@@ -143,6 +143,7 @@ define([
             const negatives = [];
             const negativesCohort0or1 = [];
             const negativesCohort2 = [];
+
             Object.entries(totalVals).forEach(([key, value]) => {
                 if (value >= 0) {
                     positives.push(key); // append key to positives
@@ -161,16 +162,12 @@ define([
                 }
             });
             // make copies of positives and negatives with +/- suffixes
-            // const positivesPlus = positives.map(item => item + '+');
             const positivesCohort0or1Plus = positivesCohort0or1.map(item => item + '+');
             const positivesCohort2Plus = positivesCohort2.map(item => item + '+');
-            // const positivesMinus = positives.map(item => item + '-');
             const positivesCohort0or1Minus = positivesCohort0or1.map(item => item + '-');
             const positivesCohort2Minus = positivesCohort2.map(item => item + '-');
-            // const negativesPlus = negatives.map(item => item + '+');
             const negativesCohort0or1Plus = negativesCohort0or1.map(item => item + '+');
             const negativesCohort2Plus = negativesCohort2.map(item => item + '+');
-            // const negativesMinus = negatives.map(item => item + '-');
             const negativesCohort0or1Minus = negativesCohort0or1.map(item => item + '-');
             const negativesCohort2Minus = negativesCohort2.map(item => item + '-');
 
@@ -323,6 +320,7 @@ define([
                 // title: {
                 // text: 'Total Values by ' + layout.qHyperCube.qDimensionInfo[1].qFallbackTitle
                 // },
+                animation: false,
                 tooltip: {
                     trigger: 'item',
                     formatter: function (params) {
