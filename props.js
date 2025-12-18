@@ -21,7 +21,7 @@ define(["jquery"], function ($) {
 
     return {
 
-        section1: function (title) {
+        section1: function (title, globalSettings) {
             return {
                 label: title,
                 type: 'items',
@@ -348,6 +348,25 @@ define(["jquery"], function ($) {
                             defaultValue: 'on'
                         },
                         {
+                            label: "Default Toggle View",
+                            type: 'integer',
+                            component: 'dropdown',
+                            ref: 'pDefaultToggle',
+                            options: [
+                                { value: 0, label: 'Line Chart' },
+                                { value: 1, label: 'Summary Bar Chart' },
+                                { value: 2, label: 'Table Grid' }
+                            ],
+                            defaultValue: 0,
+                            change: function (arg, handle) {
+                                // Reset the toggleView in globalSettings when default changes
+                                var ownId = handle.layout.qInfo.qId;
+                                if (globalSettings.hasOwnProperty(ownId)) {
+                                    globalSettings[ownId].toggleView = arg.pDefaultToggle;
+                                }
+                            }
+                        },
+                        {
                             label: "Toggle Icon Position",
                             type: 'string',
                             component: 'dropdown',
@@ -416,13 +435,13 @@ define(["jquery"], function ($) {
             }
         },
 
-        about: function (title, qext) {
+        about: function (title, globalSettings) {
             return {
                 label: title,
                 type: 'items',
                 items: [
                     {
-                        label: function (arg) { return 'Installed extension version ' + qext.version },
+                        label: function (arg) { return 'Installed extension version ' + globalSettings.qext.version },
                         component: "link",
                         url: '../extensions/ext-echart-stackedline/ext-echart-stackedline.qext'
                     },

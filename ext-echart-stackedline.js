@@ -1,25 +1,25 @@
 define(["qlik",
     "jquery",
     "./props",
-    "./cdnjs/echarts.min",
     "./paint",
     "./resize"
     // echarts.min.js from https://www.cdnpkg.com/echarts/file/echarts.min.js/?id=32956
-], function (qlik, $, props, echarts, paintFunc, resizeFunc) {
+], function (qlik, $, props, paintFunc, resizeFunc) {
 
     'use strict';
 
-    var qext;
-    var context = {
-        echart: null,
-        echart2: null
-    };
+    // var qext;
+    // var context = {
+    //     echart: null,
+    //     echart2: null
+    // };
+    var globalSettings = { qext: null };
 
     $.ajax({
         url: '../extensions/ext-echart-stackedline/ext-echart-stackedline.qext',
         dataType: 'json',
         async: false,  // wait for this call to finish.
-        success: function (data) { qext = data; }
+        success: function (data) { globalSettings.qext = data; }
     });
 
     return {
@@ -66,8 +66,8 @@ define(["qlik",
                 settings: {
                     uses: "settings"
                 },
-                section1: props.section1('Extension settings'),
-                about: props.about('About this extension', qext)
+                section1: props.section1('Extension settings', globalSettings),
+                about: props.about('About this extension', globalSettings)
             }
         },
         support: {
@@ -77,15 +77,11 @@ define(["qlik",
         },
 
         paint: async function ($element, layout) {
-            context.self = this;
-            context.ownId = this.options.id;
-            context.echarts = echarts;
-            return paintFunc($element, layout, context);
+            return paintFunc($element, layout, globalSettings);
         },
 
         resize: async function ($element, layout) {
-            context.ownId = this.options.id;
-            return resizeFunc($element, layout, context);
+            return resizeFunc($element, layout, globalSettings);
         }
     };
 });
