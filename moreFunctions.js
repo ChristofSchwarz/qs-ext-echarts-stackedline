@@ -21,17 +21,35 @@ define([], function () {
 
             return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
         }
-        , formatNumber: function (num, decimals, thousandSep, decimalSep, prefix, suffix) {
+        , formatNumber: function (num, decimals, thousandSep, decimalSep, prefix, suffix, autoScale, suffixK, suffixM) {
+          
             // usage:
             // formatNumber(1234567.89, 0, ' ', ',', '', '') --> "1 234 568"
             // formatNumber(1234567.89, 1, '.', ',', '', '') --> "1.234.567,9"
             // formatNumber(1234567.89, 2, "'", ".", '$', '') --> "$1'234'567.89"
             // formatNumber(1234567.89, 2, "'", ".", '', '%') --> "1'234'567.89%"
+            // formatNumber(1500000, 1, ',', '.', '', '', 'on', 'k', 'M') --> "1.5M"
             if (!isNaN(num) && num !== null) {
-                const fixed = num.toFixed(decimals);
+                let displayNum = num;
+                let displaySuffix = suffix || '';
+                
+                // Auto-scale logic
+                if (autoScale === 'on') {
+                    const absNum = Math.abs(num);
+                    if (absNum >= 1000000) {
+                        displayNum = num / 1000000;
+                        displaySuffix = (suffixM || 'M') + displaySuffix;
+                    } else if (absNum >= 1000) {
+                        displayNum = num / 1000;
+                        displaySuffix = (suffixK || 'k') + displaySuffix;
+                    }
+                }
+                
+                const fixed = displayNum.toFixed(decimals);
                 const parts = fixed.split('.');
                 parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, thousandSep);
-                return (prefix || '') + parts.join(decimalSep) + (suffix || '');
+                
+                return (prefix || '') + parts.join(decimalSep) + displaySuffix;
             } else {
                 return '';
             }

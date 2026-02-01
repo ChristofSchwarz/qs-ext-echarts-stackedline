@@ -366,13 +366,44 @@ define(["jquery"], function ($) {
                             expression: 'optional'
                         },
                         {
-                            label: "Number Suffix",
+                            label: "Number Suffix (general)",
                             type: 'string',
                             ref: 'pNumberSuffix',
                             defaultValue: '',
                             expression: 'optional'
-                        }]
-                    ),
+                        },
+                        {
+                            label: "Auto-scale large numbers (k,M,B)",
+                            type: 'string',
+                            component: 'dropdown',
+                            ref: 'pAutoScaleAxis',
+                            options: [
+                                { value: 'off', label: 'Off' },
+                                { value: 'on', label: 'On' }
+                            ],
+                            defaultValue: 'off'
+                        },
+                        {
+                            label: "Number Suffix for Thousands",
+                            type: 'string',
+                            ref: 'pNumberSuffixK',
+                            defaultValue: 'k',
+                            expression: 'optional',
+                            show: function (arg) {
+                                return arg.pAutoScaleAxis == 'on';
+                            }
+                        },
+                        {
+                            label: "Number Suffix for Millions",
+                            type: 'string',
+                            ref: 'pNumberSuffixM',
+                            defaultValue: 'M',
+                            expression: 'optional',
+                            show: function (arg) {
+                                return arg.pAutoScaleAxis == 'on';
+                            }
+                        }
+                    ]                    ),
                     subSection('Toggle/Save As Image Icon', [
                         {
                             label: "Save As Image Icon",
@@ -416,7 +447,7 @@ define(["jquery"], function ($) {
                                 { value: 'bottom-right', label: '↘ Bottom Right' },
                                 { value: 'bottom-left', label: '↙ Bottom Left' }
                             ],
-                            defaultValue: 'top-right'
+                            defaultValue: 'bottom-left'
                         },
                         {
                             label: "Offset Top",

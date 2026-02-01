@@ -1,3 +1,5 @@
+// version 2026-01-31
+
 define(["qlik",
     "jquery",
     "./props",

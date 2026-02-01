@@ -24,6 +24,11 @@ define([
 
         // const mode = qlik.navigation.getMode();
         if (layout.pConsoleLog) console.log(ownId, 'event=paint', 'layout', layout, 'globalSettings', globalSettings);
+        if (layout.pConsoleLog) console.log(ownId, 'Auto-scale settings:', {
+            pAutoScaleAxis: layout.pAutoScaleAxis,
+            pNumberSuffixK: layout.pNumberSuffixK,
+            pNumberSuffixM: layout.pNumberSuffixM
+        });
         //const app = qlik.currApp(self);
         const app = qlik.currApp();
 
@@ -258,7 +263,7 @@ define([
                     nameTextStyle: { fontSize: 14 },
                     axisLabel: {
                         formatter: function (value) {
-                            return moreFunctions.formatNumber(value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix);
+                            return moreFunctions.formatNumber(value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix, layout.pAutoScaleAxis, layout.pNumberSuffixK, layout.pNumberSuffixM);
                         }
                     }
                 }],
@@ -281,7 +286,7 @@ define([
                         var ttip = ''
                         legendSortOrder.forEach(key => {
                             if (vals[key] !== undefined) {
-                                const formattedValue = moreFunctions.formatNumber(vals[key], layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix);
+                                const formattedValue = moreFunctions.formatNumber(vals[key], layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix, layout.pAutoScaleAxis, layout.pNumberSuffixK, layout.pNumberSuffixM);
                                 ttip += ` <div style="display:flex; justify-content:space-between; margin:2px 0;">
                                 <span style="text-align:left;"><span style='color:${colors[key]};'>\u25A0</span> ${key}&nbsp</span>
                                 <span style="text-align:right;">&nbsp;${formattedValue}</span>
@@ -324,7 +329,7 @@ define([
                 tooltip: {
                     trigger: 'item',
                     formatter: function (params) {
-                        return params.name + ': ' + moreFunctions.formatNumber(params.value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix);
+                        return params.name + ': ' + moreFunctions.formatNumber(params.value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix, layout.pAutoScaleAxis, layout.pNumberSuffixK, layout.pNumberSuffixM);
                     }
                 },
                 xAxis: {
@@ -335,7 +340,7 @@ define([
                     type: 'value',
                     axisLabel: {
                         formatter: function (value) {
-                            return moreFunctions.formatNumber(value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix);
+                            return moreFunctions.formatNumber(value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix, layout.pAutoScaleAxis, layout.pNumberSuffixK, layout.pNumberSuffixM);
                         }
                     }
                 },
@@ -460,6 +465,36 @@ define([
             if (layout.pConsoleLog) console.log('ecOpt1', ecOpt1);
             globalSettings[ownId].echart1.setOption(ecOpt1);
 
+            // Calculate actual stacked min/max by summing values at each x-axis point
+            let stackedMax = -Infinity;
+            let stackedMin = Infinity;
+            
+            xAxisLabels.forEach((xLabel, xIndex) => {
+                let positiveSum = 0;
+                let negativeSum = 0;
+                
+                // Sum all series values at this x-axis point
+                Object.keys(tableData).forEach(yLabel => {
+                    const value = tableData[yLabel][xLabel];
+                    if (value !== null && value !== undefined && !isNaN(value)) {
+                        if (value > 0) {
+                            positiveSum += value;
+                        } else if (value < 0) {
+                            negativeSum += value;
+                        }
+                    }
+                });
+                
+                stackedMax = Math.max(stackedMax, positiveSum);
+                stackedMin = Math.min(stackedMin, negativeSum);
+            });
+            
+            const actualMax = Math.max(Math.abs(stackedMax), Math.abs(stackedMin));
+            if (layout.pConsoleLog) console.log('Stacked chart actual max:', actualMax, 'stackedMax:', stackedMax, 'stackedMin:', stackedMin);
+            
+            // Note: Scaling is now handled by formatNumber function based on pAutoScaleAxis setting
+            // No manual data scaling is performed here
+
             // Initialize second chart
             var chart2Dom = document.getElementById('chart2_' + ownId);
             globalSettings[ownId].echart2 = echarts.init(chart2Dom, null, { renderer: layout.pEchartRenderer || 'canvas' });
@@ -494,7 +529,7 @@ define([
                     tableHtml += '<tr><td style="border:1px solid #ccc;padding:5px;background:' + bgColor + ';font-weight:bold;color:' + textColor + ';">' + yLabel + '</td>';
                     xAxisLabels.forEach(xLabel => {
                         const val = tableData[yLabel][xLabel];
-                        const cellValue = val !== undefined ? moreFunctions.formatNumber(val, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix) : '';
+                        const cellValue = val !== undefined ? moreFunctions.formatNumber(val, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix, layout.pAutoScaleAxis, layout.pNumberSuffixK, layout.pNumberSuffixM) : '';
                         tableHtml += '<td style="border:1px solid #ccc;padding:5px;text-align:right;">' + cellValue + '</td>';
                     });
                     tableHtml += '</tr>';
