@@ -135,6 +135,37 @@ define(["jquery"], function ($) {
                     ]),
                     subSection('Color Settings', [
                         {
+                            label: "Color / Sort based on",
+                            type: "string",
+                            component: "buttongroup",
+                            ref: "pColorMode",
+                            options: [
+                                { value: "total", label: "Total of all", tooltip: "Sum across all x-axis values (uses session object)" },
+                                { value: "last", label: "Last n entries", tooltip: "Sum across only the last n x-axis values" }
+                            ],
+                            defaultValue: "total"
+                        },
+                        {
+                            label: "Number of last entries (n)",
+                            type: "number",
+                            ref: "pLastNEntries",
+                            expression: 'optional',
+                            defaultValue: 4,
+                            show: function (arg) {
+                                return arg.pColorMode === "last";
+                            }
+                        },
+                        {
+                            label: "Text in reference line",
+                            type: "string",
+                            ref: "pRefLineText",
+                            expression: 'optional',
+                            defaultValue: "last {n}",
+                            show: function (arg) {
+                                return arg.pColorMode === "last";
+                            }
+                        },
+                        {
                             label: "Stack Opacity",
                             type: 'number',
                             component: 'slider',

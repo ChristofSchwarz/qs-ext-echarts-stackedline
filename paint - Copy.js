@@ -132,9 +132,7 @@ define([
             // Calculate totalVals: sum per dim2 over last n or all x-axis entries
             const lastEntries = layout.pColorMode === 'last' ? (layout.pLastNEntries || 4) : xAxisLabels.length;
             const totalVals = calcSumLastEntries(layout.qHyperCube.qDataPages[0].qMatrix, lastEntries);
-            // Always compute the full all-time total (used for the context bars in echart2 when pColorMode==='last')
-            const totalTotalVals = layout.pColorMode === 'last' ? calcSumLastEntries(layout.qHyperCube.qDataPages[0].qMatrix, xAxisLabels.length) : null;
-            if (layout.pConsoleLog) console.log(ownId, 'pColorMode=' + layout.pColorMode + ', lastEntries=' + lastEntries, 'totalVals:', totalVals, 'totalTotalVals:', totalTotalVals);
+            if (layout.pConsoleLog) console.log(ownId, 'pColorMode=' + layout.pColorMode + ', lastEntries=' + lastEntries, 'totalVals:', totalVals);
 
 
             var colors = {};
@@ -468,7 +466,13 @@ define([
                     silent: true,
                     symbol: 'none',
                     lineStyle: { type: 'dashed', color: '#888', width: 1 },
-                    label: { show: true, formatter: (layout.pRefLineText).replace('{n}', lastEntries), position: 'insideStartTop', fontSize: 10, color: '#888', rotate: 0 },
+                    label: {
+                        show: true,
+                        formatter: 'range for colors and sorting',
+                        position: 'insideStartTop',
+                        fontSize: 10,
+                        color: '#888'
+                    },
                     data: [{ xAxis: rangeStartLabel }]
                 };
             }
@@ -512,80 +516,40 @@ define([
             //echart2 = context.echart2;
 
             // Populate ecOpt2 data
+            legendSortOrder.forEach(key => {
+                if (totalVals[key] !== undefined) {
+                    ecOpt2.series[0].data.push({
+                        value: totalVals[key],
+                        itemStyle: { color: colors[key] }
+                    });
+                }
+            });
+
             if (layout.pColorMode === 'last' && lastEntries < xAxisLabels.length) {
                 const dim1Label = layout.qHyperCube.qDimensionInfo[0].qFallbackTitle;
-                const seriesNameN = 'Last ' + lastEntries + ' ' + dim1Label;
-                const seriesNameAll = 'All ' + dim1Label;
-
-                ecOpt2.tooltip.trigger = 'axis';
-                ecOpt2.tooltip.formatter = function (params) {
-                    let tip = '<strong>' + params[0].name + '</strong><br>';
-                    params.forEach(p => {
-                        const formatted = moreFunctions.formatNumber(p.value, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix, layout.pAutoScaleAxis, layout.pNumberSuffixK, layout.pNumberSuffixM);
-                        tip += '<span style="color:' + p.color + ';">\u25A0</span> ' + p.seriesName + ': ' + formatted + '<br>';
-                    });
-                    return tip;
-                };
-                ecOpt2.legend = {
-                    show: true,
-                    data: [
-                        { name: seriesNameN, itemStyle: { color: layout.pPosStartColor }, textStyle: { color: layout.pPosStartColor, fontSize: 10 } },
-                        { name: seriesNameAll, itemStyle: { color: '#aaa' }, textStyle: { color: '#aaa', fontSize: 10 } }
-                    ],
+                const dim2Label = layout.qHyperCube.qDimensionInfo[1].qFallbackTitle;
+                ecOpt2.title = {
+                    text: '',
+                    subtext: 'total per ' + dim2Label + ' is calculated based on the last ' + lastEntries + ' ' + dim1Label,
+                    subtextStyle: { fontSize: 10, color: '#888' },
                     top: 0,
                     left: 'center'
                 };
                 ecOpt2.grid.top = 30;
-
-                // Series 0: last N totals (sort-relevant, full color)
-                ecOpt2.series[0].name = seriesNameN;
-                legendSortOrder.forEach(key => {
-                    if (totalVals[key] !== undefined) {
-                        ecOpt2.series[0].data.push({ value: totalVals[key], itemStyle: { color: colors[key] } });
-                    }
-                });
-
-                // Series 1: all-time totals (context, 80% transparent)
-                ecOpt2.series.push({ name: seriesNameAll, type: 'bar', data: [], label: { show: false } });
-                legendSortOrder.forEach(key => {
-                    if (totalTotalVals[key] !== undefined) {
-                        ecOpt2.series[1].data.push({ value: totalTotalVals[key], itemStyle: { color: colors[key], opacity: 0.2 } });
-                    }
-                });
-            } else {
-                legendSortOrder.forEach(key => {
-                    if (totalVals[key] !== undefined) {
-                        ecOpt2.series[0].data.push({ value: totalVals[key], itemStyle: { color: colors[key] } });
-                    }
-                });
             }
 
             globalSettings[ownId].echart2.setOption(ecOpt2);
-
-            // Prevent "Last N" series from being toggled off via the legend
-            if (layout.pColorMode === 'last' && lastEntries < xAxisLabels.length) {
-                const dim1Label = layout.qHyperCube.qDimensionInfo[0].qFallbackTitle;
-                const seriesNameN = 'Last ' + lastEntries + ' ' + dim1Label;
-                globalSettings[ownId].echart2.off('legendselectchanged');
-                globalSettings[ownId].echart2.on('legendselectchanged', function (params) {
-                    if (!params.selected[seriesNameN]) {
-                        globalSettings[ownId].echart2.dispatchAction({ type: 'legendSelect', name: seriesNameN });
-                    }
-                });
-            }
 
 
 
             // Build HTML table
             const outOfRangeXLabels = new Set(xAxisLabels.slice(0, xAxisLabels.length - lastEntries));
             let tableHtml = '<table style="border-collapse:collapse;width:100%;font-size:12px;">';
-            const totalColHeader = layout.pColorMode === 'last' ? 'Last ' + lastEntries : 'Total';
             tableHtml += '<thead><tr><th style="border:1px solid #ccc;padding:5px;background:#f0f0f0;position:sticky;top:0;left:0;z-index:2;"></th>';
             xAxisLabels.forEach(xLabel => {
                 const dimColor = outOfRangeXLabels.has(xLabel) ? 'color:#bbb;' : '';
                 tableHtml += '<th style="border:1px solid #ccc;padding:5px;background:#f0f0f0;position:sticky;top:0;' + dimColor + '">' + xLabel + '</th>';
             });
-            tableHtml += '<th style="border:1px solid #ccc;padding:5px;background:#f0f0f0;position:sticky;top:0;font-weight:bold;">' + totalColHeader + '</th>';
             tableHtml += '</tr></thead><tbody>';
 
             legendSortOrder.forEach(yLabel => {
@@ -599,9 +563,6 @@ define([
                         const cellStyle = outOfRangeXLabels.has(xLabel) ? 'border:1px solid #ccc;padding:5px;text-align:right;color:#bbb;' : 'border:1px solid #ccc;padding:5px;text-align:right;';
                         tableHtml += '<td style="' + cellStyle + '">' + cellValue + '</td>';
                     });
-                    const totalVal = totalVals[yLabel];
-                    const totalCellValue = totalVal !== undefined ? moreFunctions.formatNumber(totalVal, layout.pFmtDecimals, layout.pFmtThousandSep, layout.pFmtDecimalSep, layout.pNumberPrefix, layout.pNumberSuffix, layout.pAutoScaleAxis, layout.pNumberSuffixK, layout.pNumberSuffixM) : '';
-                    tableHtml += '<td style="border:1px solid #ccc;padding:5px;text-align:right;font-weight:bold;">' + totalCellValue + '</td>';
                     tableHtml += '</tr>';
                 }
             });

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(node *)",
+      "Bash(npm *)"
+    ],
+    "deny": []
+  },
+  "env": {
+    "EXTENSION_NAME": "ext-echart-stackedline"
+  }
+}
