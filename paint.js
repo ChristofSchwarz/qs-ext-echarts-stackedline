@@ -462,7 +462,7 @@ define([
             });
 
             // Add a vertical dotted marker at the start of the color/sort range when in "last" mode
-            if (layout.pColorMode === 'last' && lastEntries < xAxisLabels.length && ecOpt1.series.length > 0) {
+            if (layout.pColorMode === 'last' && layout.pShowDashedLine !== false && lastEntries < xAxisLabels.length && ecOpt1.series.length > 0) {
                 const rangeStartLabel = xAxisLabels[xAxisLabels.length - lastEntries];
                 ecOpt1.series[0].markLine = {
                     silent: true,

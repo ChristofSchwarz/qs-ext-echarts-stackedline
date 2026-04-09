@@ -156,15 +156,24 @@ define(["jquery"], function ($) {
                             }
                         },
                         {
+                            label: "Show dashed line",
+                            type: "boolean",
+                            ref: "pShowDashedLine",
+                            defaultValue: true,
+                            show: function (arg) {
+                                return arg.pColorMode === "last";
+                            }
+                        },                        {
                             label: "Text in reference line",
                             type: "string",
                             ref: "pRefLineText",
                             expression: 'optional',
                             defaultValue: "last {n}",
                             show: function (arg) {
-                                return arg.pColorMode === "last";
+                                return arg.pColorMode === "last" && arg.pShowDashedLine == true;
                             }
                         },
+
                         {
                             label: "Stack Opacity",
                             type: 'number',
